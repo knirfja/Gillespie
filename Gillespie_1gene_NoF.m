@@ -17,6 +17,10 @@ rpts = 10;
 maxstep = 10000;
 
 %% Analytical solutions
+% syms m p positive
+% 
+% S = solve(0 == k(1) - k(3)*m,...
+%           0 == k(2)*m - k(4)*p,'m','p');
 
 calc_mean(1) = inspc(1);
 calc_var(1) = 0;

@@ -7,7 +7,8 @@ clear all
 % k = [.5 .6 .05 .1];
 k(3) = 0.1824/60; % Nucleic Acids Res. 2013 Jul; 41(13): 6381–6390.
 % k(3) = 0.0009/60;
-k(4) = 0.0087/60; % Nucleic Acids Res. 2013 Jul; 41(13): 6381–6390.
+% k(4) = 0.0087/60; % Nucleic Acids Res. 2013 Jul; 41(13): 6381–6390.
+k(4) = k(3)
 k(1) = 10 * k(3); % Arbitrary
 k(2) = 5 * k(4); % Arbitrary
 rxnm = [1 0 0; 0 1 0; 0 1 0; 0 0 1];
@@ -149,9 +150,9 @@ ylim([-5 max(spcout(:))*1.01])
 legend('mRNA','Protein')
 annotation('textbox',[.01 0 .1 .1],'String',{'k = ', num2str(k(1:2)), num2str(k(3:4))})
 
-%%
+%% mRNA dynamic linear fit
 % Display species
-figure('Name','1 Gene No Feedback Dynamic Linear Fit')
+figure('Name','1 Gene No Feedback Dynamic mRNA Linear Fit')
 hold on
 title('1 Gene No Feedback')
 
@@ -159,6 +160,7 @@ title('1 Gene No Feedback')
 % p_fun_t_ln = @(t) log( k(1)*k(2)/(k(3)*k(4))+k(2)*A*exp(-k(3)*t)/(k(4)-k(3))+B*exp(-k(4)*t));
 
 eq_ind(1)=1;
+% eq_ind(2:rpts+1)=100;
 for iter1 = 1:rpts    
 %     h_sp2(iter1) = subplot(2,3,iter1);    
     eq_ind(iter1+1) = find(spcout(2,:,iter1)>=10,1)-1;    
@@ -166,6 +168,8 @@ for iter1 = 1:rpts
     m_dyn_lin(2,eq_ind(iter1)+1:eq_ind(iter1+1)+eq_ind(iter1)) = -log( abs((calc_mean(2)-spcout(2,1:eq_ind(iter1+1),iter1))/calc_mean(2)) );    
 %     ylabel('# molecules')
 end
+% remove inf
+% m_dyn_lin=m_dyn_lin(:,m_dyn_lin(2,:)~=inf);
 % m_dyn_lin_pooled = 
 fit_op = fitoptions('Method','NonlinearLeastSquares',...
            'Lower',[],...
@@ -198,7 +202,7 @@ rsq = 1 - SSresid/SStotal;
 hold on
 plot(m_dyn_lin(1,:),m_dyn_lin(1,:).*k(3),'k-')
 plot(m_dyn_lin(1,:),m_dyn_lin(2,:),'r.')
-plot(m_dyn_lin(1,:),yfit,'r.-')
+plot(m_dyn_lin(1,:),yfit,'r-')
 plot(m_dyn_lin(1,:),yfit_low,'r:')
 plot(m_dyn_lin(1,:),yfit_high,'r:')
 
@@ -215,4 +219,86 @@ xlabel('time (A.U.)')
 
 annotation('textbox',[.01 0 .1 .1],'String',{'k = ', num2str(k(1:2)), num2str(k(3:4))})
 
+
+%% Protein dynamic  fit
+% Display species
+figure('Name','1 Gene No Feedback Protein Dynamic Fit')
+hold on
+title('1 Gene No Feedback')
+
+% m_fun_t_ln = @(t) log( k(1)/k(3)+A*exp(-k(3)*t));
+% p_fun_t_ln = @(t) log( k(1)*k(2)/(k(3)*k(4))+k(2)*A*exp(-k(3)*t)/(k(4)-k(3))+B*exp(-k(4)*t));
+
+% eq_ind(1)=1;
+% for iter1 = 1:rpts    
+% %     h_sp2(iter1) = subplot(2,3,iter1);    
+%     eq_ind(iter1+1) = find(spcout(3,:,iter1)>=10,1)-1;    
+%     p_dyn_lin(1,eq_ind(iter1)+1:eq_ind(iter1+1)+eq_ind(iter1)) = tout(1,1:eq_ind(iter1+1),iter1);
+% %     m_dyn_lin(2,eq_ind(iter1)+1:eq_ind(iter1+1)+eq_ind(iter1)) = -log( abs((calc_mean(2)-spcout(3,1:eq_ind(iter1+1),iter1))/calc_mean(2)) );    
+%     p_dyn_lin(2,eq_ind(iter1)+1:eq_ind(iter1+1)+eq_ind(iter1)) = ...
+%          (spcout(2,1,iter1)-calc_mean(2))./(spcout(2,1:eq_ind(iter1+1),iter1)-calc_mean(2)) .*...
+%          (spcout(3,1:eq_ind(iter1+1),iter1)-calc_mean(3))-(spcout(3,1,iter1)-calc_mean(3));    
+% %     ylabel('# molecules')
+% end
+eq_ind(1)=1;
+for iter1 = 1:rpts    
+%     h_sp2(iter1) = subplot(2,3,iter1);    
+    eq_ind(iter1+1) = find(spcout(3,:,iter1)>=10,1)-1;    
+    p_dyn_lin(1,:) = tout(1,:,iter1);
+%     m_dyn_lin(2,eq_ind(iter1)+1:eq_ind(iter1+1)+eq_ind(iter1)) = -log( abs((calc_mean(2)-spcout(3,1:eq_ind(iter1+1),iter1))/calc_mean(2)) );    
+    p_dyn_lin(2,:) = ...
+         (spcout(2,1,iter1)-calc_mean(2))./(spcout(2,:,iter1)-calc_mean(2)) .*...
+         (spcout(3,:,iter1)-calc_mean(3))-(spcout(3,1,iter1)-calc_mean(3));    
+%     ylabel('# molecules')
+end
+% remove inf
+p_dyn_lin_filt=p_dyn_lin(:,p_dyn_lin(2,:)~=inf & p_dyn_lin(2,:)~=-inf);
+
+fit_op = fitoptions('Method','NonlinearLeastSquares',...
+           'Lower',[],...
+           'Upper',[],...
+           'Startpoint',[0]);
+
+%     f = fittype('a*2^(b*x)+c','options',s); 
+f = fittype('a*x','options',fit_op);    
+
+[c,gof] = fit(p_dyn_lin_filt(1,:)',p_dyn_lin_filt(2,:)',f);
+
+
+p2 = [coeffvalues(c) 0];
+    ci2=confint(c);
+p2_low = [ci2(1) 0];
+p2_high = [ci2(2) 0];
+
+
+%     [p,S] = polyfit(m_dyn_lin(1,:),m_dyn_lin(2,:),1);
+yfit2 = polyval(p2,p_dyn_lin_filt(1,:));
+yfit2_low = polyval(p2_low,p_dyn_lin_filt(1,:));
+yfit2_high = polyval(p2_high,p_dyn_lin_filt(1,:));
+yresid2 = p_dyn_lin_filt(2,:) - yfit2;
+SSresid2 = sum(yresid2.^2);
+SStotal2 = (length(p_dyn_lin_filt(2,:))-1) * var(p_dyn_lin_filt(2,:));
+rsq2 = 1 - SSresid2/SStotal2; 
+%     ste = sqrt(diag(inv(S.R)*inv(S.R')).*S.normr.^2./S.df);
+%     p_h = p; p_h(1) = p(1)+ste(1);
+
+hold on
+% plot(p_dyn_lin_filt(1,:),p_dyn_lin_filt(1,:).*k(3),'k-')
+plot(p_dyn_lin_filt(1,:),p_dyn_lin_filt(2,:),'k.')
+plot(p_dyn_lin_filt(1,:),yfit2,'k-')
+plot(p_dyn_lin_filt(1,:),yfit2_low,'k:')
+plot(p_dyn_lin_filt(1,:),yfit2_high,'k:')
+
+
+lgd_str = {'Simulated',['Best Fit = ' num2str(p2(1),3) ' ± ' num2str(ci2(2)-p2(1),3) ]};
+
+legend(lgd_str,'location','NW')
+
+xlabel('time (A.U.)')
+% linkaxes(h_sp2)
+% ylim([-5 max(spcout(:))*1.01])
+% ylim([-7 1])
+% xlim([0 800])
+
+annotation('textbox',[.01 0 .1 .1],'String',{'k = ', num2str(k(1:2)), num2str(k(3:4))})
 

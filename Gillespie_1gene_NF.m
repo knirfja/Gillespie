@@ -40,9 +40,13 @@ rxnm = [1 0 0 0; 0 1 0 0;...    % basal transcription   ; mRNA deg
 scm = [0 1 0 0; 0 -1 0 0;...    % basal transcription   ; mRNA deg
         0 0 1 0; 0 0 -1 0; ...   % translation           ; Protein deg
         -1 0 -1 1; 1 0 1 -1; ...   % Protein / DNA binding ; Protein / DNA unbinding
-        0 1 0 0];               % Bound DNA transcription    
-inspc = [1 0 0 0];
-rpts = 10;
+        0 1 0 0];               % Bound DNA transcription
+stead_state=1; % set if you want to start at steady state (ss)
+if ~stead_state
+    inspc = [1 0 0 0]; % set initial conditions if not at ss
+end
+g_tot = 1;
+rpts = 6;
 maxstep = 1000;
 
 %% Analytical solutions
@@ -51,12 +55,21 @@ syms g m p pg positive
 S = solve( 0 == k(6)*pg - k(5)*p*g,...
            0 == k(1)*g + k(7)*pg - k(2)*m,...
            0 == k(3)*m - k(4)*p - k(5)*p*g + k(6)*pg,...
-           0 == k(5)*p*g - k(6)*pg,g,m,p,pg);
+           g_tot == g + pg,[g,m,p,pg]);       
 
-% calc_mean(1)=vpa(S.g);       
-% calc_mean(2)=vpa(S.m);
-% calc_mean(3)=vpa(S.p);
-% calc_mean(4)=vpa(S.pg);
+calc_mean(1)=double(vpa(S.g));       
+calc_mean(2)=double(vpa(S.m));
+calc_mean(3)=double(vpa(S.p));
+calc_mean(4)=double(vpa(S.pg));
+% calc_mean(4)=calc_mean(3)*g_tot/(k(6)/k(5)+calc_mean(3));
+% calc_mean(1)=g_tot-calc_mean(4);
+
+if stead_state
+    inspc=round(calc_mean);
+end
+% Start at steady state?
+
+
 % calc_mean(1) = inspc(1);
 % calc_var(1) = 0;
 % 
@@ -76,32 +89,43 @@ figure('Name','1 Gene Feedback')
 hold on
 title('1 Gene Feedback')
 for iter1 = 1:rpts    
-    h_sp1(1+3*(iter1-1)) = subplot(3,rpts,iter1);
+    h_sp1(iter1) = subplot(3,rpts,iter1);
     hold on
     h_trace(1,iter1) = plot(tout(1,:,1),spcout(4,:,iter1),'b');
-%     h_mean(1,iter1) = plot(tout(1,:,1),calc_mean(4).*ones(1,maxstep),'b--');
+    ylim([0 max(max(spcout(1,:,:)))*1.1])
+    if iter1 == 1
+        ylabel('# P::DNA complexes')
+    end
+    h_mean(1,iter1) = plot(tout(1,:,1),calc_mean(4).*ones(1,maxstep),'b--');
     
-    h_sp1(2+3*(iter1-1)) = subplot(3,rpts,iter1+rpts);
+    h_sp2(iter1) = subplot(3,rpts,iter1+rpts);
     hold on
     h_trace(2,iter1) = plot(tout(1,:,1),spcout(2,:,iter1),'r');
-%     h_mean(2,iter1) = plot(tout(1,:,1),calc_mean(2).*ones(1,maxstep),'r--');
+    h_mean(2,iter1) = plot(tout(1,:,1),calc_mean(2).*ones(1,maxstep),'r--');
 %     h_posstd1(iter1) = plot(tout(1,:,1),(calc_mean(2)+2*sqrt(calc_var(2))) .*ones(1,maxstep),'r:');
 %     h_negstd1(iter1) = plot(tout(1,:,1),(calc_mean(2)-2*sqrt(calc_var(2))) .*ones(1,maxstep),'r:');
+    ylim([0 max(max(spcout(2,:,:)))*1.01])
+    if iter1 == 1
+        ylabel('# RNA molecules')
+    end
     
-    h_sp1(3+3*(iter1-1)) = subplot(3,rpts,iter1+2*rpts);
+    h_sp3(iter1) = subplot(3,rpts,iter1+2*rpts);
     hold on
     h_trace(3,iter1*3+2) = plot(tout(1,:,1),spcout(3,:,iter1),'k');
-%     h_mean(3,iter1) = plot(tout(1,:,1),calc_mean(3).*ones(1,maxstep),'k--');
+    h_mean(3,iter1) = plot(tout(1,:,1),calc_mean(3).*ones(1,maxstep),'k--');
 %     h_posstd2(iter1) = plot(tout(1,:,1),(calc_mean(3)+2*sqrt(calc_var(3))) .*ones(1,maxstep),'k:');
 %     h_negstd2(iter1) = plot(tout(1,:,1),(calc_mean(3)-2*sqrt(calc_var(3))) .*ones(1,maxstep),'k:')   ; 
-    
+    ylim([0 max(max(spcout(3,:,:)))*1.01])
+    if iter1 == 1
+        ylabel('# Protein molecules')
+    end    
     xlabel('time (A.U.)')
-    ylabel('# molecules')
+
 end
-linkaxes(h_sp1)
-ylim([0 max(spcout(:))*1.01])
+linkaxes(h_sp1); linkaxes(h_sp2); linkaxes(h_sp3)
+linkaxes([h_sp1,h_sp2,h_sp3],'x')
 xlim([0 max(tout(:))])
-legend([h_trace(1,end),h_trace(2,end),h_trace(3,end)],'DNA','mRNA','Protein')
+% legend([h_trace(1,end),h_trace(2,end),h_trace(3,end)],'DNA','mRNA','Protein')
 annotation('textbox',[.01 0 .1 .1],'String',{'k = ', num2str(k(1:2)), num2str(k(3:4)),num2str(k(5:7))})
 
 
@@ -135,25 +159,24 @@ std_spc_var = std(spc_var,0,3)';
 
 
 m_spc_mean
-calc_mean = m_spc_mean;
+calc_mean
 
 m_spc_var
-calc_var = m_spc_var;
+% calc_var
 
-% output(1,:) = numel(inspc);
-% % output(2,:) = 
-% figure('Name','Steady State Means')
-% hold on
-% plot([1:2],calc_mean(2:3),'r.','markersize',15)
-% errorbar(m_spc_mean(2:3),std_spc_mean(2:3),'k+')
-% % errorbar([1:3]+.1,m_spc_var,std_spc_var,'v')
-% ylabel('mean # molecules')
-% spc_names = {'DNA', 'mRNA','Protein'};
-% set(gca,'xtick',[1 2])
-% set(gca,'xticklabel',spc_names(2:3))
-% legend('Predicted Mean','Measured Mean')
-% 
-% %%
+
+figure('Name','Steady State Means')
+hold on
+plot([1:4],calc_mean(1:4),'r.','markersize',15)
+errorbar(m_spc_mean(1:4),std_spc_mean(1:4),'k+')
+% errorbar([1:3]+.1,m_spc_var,std_spc_var,'v')
+ylabel('mean # molecules')
+spc_names = {'DNA', 'mRNA','Protein','P::DNA'};
+set(gca,'xtick',[1 2 3 4])
+set(gca,'xticklabel',spc_names(1:4))
+legend('Predicted Mean','Measured Mean')
+
+%%
 % figure('Name','Steady State Variance')
 % hold on
 % plot([1:2],calc_var(2:3),'r.','markersize',15)
@@ -164,8 +187,8 @@ calc_var = m_spc_var;
 % set(gca,'xtick',[1 2])
 % set(gca,'xticklabel',spc_names(2:3))
 % legend('Predicted \sigma ^2','Measured \sigma ^2')
-% 
-% 
+
+
 % %% Dynamic
 % A=-k(1)/k(3);
 % B=-k(1)*k(2)/(k(3)*k(4)-k(4)^2);
@@ -191,8 +214,8 @@ calc_var = m_spc_var;
 % ylim([-5 max(spcout(:))*1.01])
 % legend('mRNA','Protein')
 % annotation('textbox',[.01 0 .1 .1],'String',{'k = ', num2str(k(1:2)), num2str(k(3:4)),num2str(k(5:7))})
-% 
-% %%
+
+%% Dynamics
 % % Display species
 % figure('Name','1 Gene No Feedback Dynamic Linear Fit')
 % hold on

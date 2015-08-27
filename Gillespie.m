@@ -1,4 +1,4 @@
-function [tout, spcout, varargout ] = Gillespie2( rates, rxn_matrix, state_change_matrix, varargin )
+function [tout, spcout, varargout ] = Gillespie( rates, rxn_matrix, state_change_matrix, varargin )
 %Gillespie1 Summary of this function goes here
 %   Detailed explanation goes here
 % AFrink 20150809

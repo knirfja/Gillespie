@@ -1,16 +1,19 @@
-function [ kPRout, kPRMout, kPEout, kPREout ] = partition_functions( cI,cro,RNAP,cII,V, varargin )
+function [ kPout ] = partition_functions( cI_2,cro_2,RNAP,cII, varargin )
 %Calculates the propensity factors for transcript initiation at the 4 promoters
 %   AF20150827
 %   Based on 
 %   Shea, M. A. & Ackers, G. K. The OR control system of bacteriophage lambda. A physical-chemical model for gene regulation. J. Mol. Biol. 181, 211–30 (1985).
 
 % Avagodro's number
-A = 6.0221413*10^23;
 R = 1.987*10^-3; %kcal / mol
-T = 30+273.15;
 
 if nargin>5
-    rand_num=varargin{1};
+    T = varargin{1};
+else
+    T = 30+273.15;
+end
+if nargin>6
+    rand_num=varargin{2};
 else
     rand_num= rand(3,1);
 end
@@ -23,13 +26,17 @@ delG_PR=[0;-11.7;-10.1;-10.1;-10.8;-10.8;-12.1;-11.5;-12.5;...
         -22.3;-33.8;-33.7;-35.8;-32.6;-33;-31.7;-33;-34.6;-35.2;...
         -33.1;-34;-32.4];
 % Number of each element bound in each state
-spc_bound_PR=[0,0,0;1,0,0;1,0,0;1,0,0;0,1,0;0,1,0;0,1,0;0,0,1;0,0,1;2,0,0;2,0,0;2,0,0;0,2,0;0,2,0;0,2,0;0,0,2;1,1,0;1,1,0;1,1,0;1,1,0;1,1,0;1,1,0;1,0,1;1,0,1;1,0,1;0,1,1;0,1,1;1,0,1;3,0,0;0,3,0;2,1,0;2,1,0;2,1,0;1,2,0;1,2,0;1,2,0;2,0,1;0,2,1;1,1,1;1,1,1];
+spc_bound_PR=[0,0,0;1,0,0;1,0,0;1,0,0;0,1,0;0,1,0;0,1,0;0,0,1;...
+    0,0,1;2,0,0;2,0,0;2,0,0;0,2,0;0,2,0;0,2,0;0,0,2;1,1,0;1,1,...
+    0;1,1,0;1,1,0;1,1,0;1,1,0;1,0,1;1,0,1;1,0,1;0,1,1;0,1,1;1,...
+    0,1;3,0,0;0,3,0;2,1,0;2,1,0;2,1,0;1,2,0;1,2,0;1,2,0;2,0,1;...
+    0,2,1;1,1,1;1,1,1];
     
 % partial partition function
 Z_PR= exp(-delG_PR./(R*T)).*...
-     ((cI./A./V) .^ spc_bound_PR(:,1)).*...
-     ((cro./A./V) .^ spc_bound_PR(:,2)).*...
-     ((RNAP./A./V) .^ spc_bound_PR(:,3));
+     ((cI_2) .^ spc_bound_PR(:,1)).*...
+     ((cro_2) .^ spc_bound_PR(:,2)).*...
+     ((RNAP) .^ spc_bound_PR(:,3));
 % Z / Ztotal for each state
 Prob_PR= Z_PR/sum(Z_PR);  
 
@@ -37,12 +44,18 @@ Prob_PR= Z_PR/sum(Z_PR);
 state_PR=find(cumsum(Prob_PR) > rand_num(1),1);
 
 % rate of transcrpion activation of each state
-kPRM=[0;0;0;0;0;0;0;0.00100;0;0;0;0;0;0;0;0.00100;0;0;0;0;0;0;0;0.0110;0.00100;0;0.00100;0.00100;0;0;0;0;0;0;0;0;0.0110;0.00100;0.00100;0.0110];
-kPR=[0;0;0;0;0;0;0;0;0.0140;0;0;0;0;0;0;0.0140;0;0;0;0;0;0;0.0140;0;0;0.0140;0;0;0;0;0;0;0;0;0;0;0;0;0;0];
+kPRM=[0;0;0;0;0;0;0;0.00100;0;0;0;0;0;0;0;0.00100;0;0;0;0;0;0;0;...
+    0.0110;0.00100;0;0.00100;0.00100;0;0;0;0;0;0;0;0;0.0110;...
+    0.00100;0.00100;0.0110];
+kPR=[0;0;0;0;0;0;0;0;0.0140;0;0;0;0;0;0;0.0140;0;0;0;0;0;0;0.0140;...
+    0;0;0.0140;0;0;0;0;0;0;0;0;0;0;0;0;0;0];
 
 % output the rates of the chosen state
-kPRMout = kPRM(state_PR);
-kPRout = kPR(state_PR);
+% kPRMout = kPRM(state_PR);
+% kPRout = kPR(state_PR);
+
+kPout(1) = kPRM(state_PR);
+kPout(2) = kPR(state_PR);
 
 %% Determine transcription initiation rate of PL promoter
 
@@ -51,16 +64,17 @@ delG_PL=[0;-10.9;-12.1;-11.7;-10.1;-12.5;-22.9;-20.9;-22.8;-23.7];
 spc_bound_PL=[0,0,0;0,1,0;0,1,0;1,0,0;1,0,0;0,0,1;0,2,0;1,1,0;1,1,0;2,0,0];
 
 Z_PL= exp(-delG_PL./(R*T)).*...
-     ((cI./A./V) .^ spc_bound_PL(:,1)).*...
-     ((cro./A./V) .^ spc_bound_PL(:,2)).*...
-     ((RNAP./A./V) .^ spc_bound_PL(:,3));
+     ((cI_2) .^ spc_bound_PL(:,1)).*...
+     ((cro_2) .^ spc_bound_PL(:,2)).*...
+     ((RNAP) .^ spc_bound_PL(:,3));
 Prob_PL= Z_PL/sum(Z_PL); 
 
 state_PL=find(cumsum(Prob_PL) > rand_num(2),1);
 
 kPL=[0;0;0;0;0;0.011;0;0;0;0];
 
-kPLout=kPL(state_PL);
+% kPLout=kPL(state_PL);
+kPout(3) = kPL(state_PL);
 
 %% Determine transcription initiation rate of PRE promoter
 
@@ -69,15 +83,16 @@ delG_PRE=[0;-9.9;-9.7;-21.5];
 spc_bound_PRE= [0,0; 0,1;1,0;1,1];
 
 Z_PRE= exp(-delG_PRE./(R*T)).*...
-     ((cII./A./V) .^ spc_bound_PRE(:,1)).*...
-     ((RNAP./A./V) .^ spc_bound_PRE(:,2));
+     ((cII) .^ spc_bound_PRE(:,1)).*...
+     ((RNAP) .^ spc_bound_PRE(:,2));
 Prob_PRE= Z_PRE/sum(Z_PRE); 
 
 state_PRE=find(cumsum(Prob_PRE) > rand_num(3),1);
 
 kPRE=[0;0.00004;0;0.015];
 
-kPRE=kPRE(state_PRE);
+% kPREout=kPRE(state_PRE);
+kPout(4) = kPRE(state_PRE);
 
 end
 

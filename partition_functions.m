@@ -1,4 +1,4 @@
-function [ kPout ] = partition_functions( cI_2,cro_2,RNAP,cII, varargin )
+function [ varargout ] = partition_functions( cI_2,cro_2,RNAP,cII, varargin )
 %Calculates the propensity factors for transcript initiation at the 4 promoters
 %   AF20150827
 %   Based on 
@@ -12,11 +12,11 @@ if nargin>5
 else
     T = 30+273.15;
 end
-if nargin>6
-    rand_num=varargin{2};
-else
-    rand_num= rand(3,1);
-end
+% if nargin>6
+%     rand_num=varargin{2};
+% else
+%     rand_num= rand(3,1);
+% end
 
 %% Determine transcription initiation rate of PR / PRM promoters
 % delta G of each of the possible 40 states
@@ -41,21 +41,21 @@ Z_PR= exp(-delG_PR./(R*T)).*...
 Prob_PR= Z_PR/sum(Z_PR);  
 
 % find index of the state biased randomly chosen
-state_PR=find(cumsum(Prob_PR) > rand_num(1),1);
+% state_PR=find(cumsum(Prob_PR) > rand_num(1),1);
 
 % rate of transcrpion activation of each state
-kPRM=[0;0;0;0;0;0;0;0.00100;0;0;0;0;0;0;0;0.00100;0;0;0;0;0;0;0;...
-    0.0110;0.00100;0;0.00100;0.00100;0;0;0;0;0;0;0;0;0.0110;...
-    0.00100;0.00100;0.0110];
-kPR=[0;0;0;0;0;0;0;0;0.0140;0;0;0;0;0;0;0.0140;0;0;0;0;0;0;0.0140;...
-    0;0;0.0140;0;0;0;0;0;0;0;0;0;0;0;0;0;0];
+% kPRM=[0;0;0;0;0;0;0;0.00100;0;0;0;0;0;0;0;0.00100;0;0;0;0;0;0;0;...
+%     0.0110;0.00100;0;0.00100;0.00100;0;0;0;0;0;0;0;0;0.0110;...
+%     0.00100;0.00100;0.0110];
+% kPR=[0;0;0;0;0;0;0;0;0.0140;0;0;0;0;0;0;0.0140;0;0;0;0;0;0;0.0140;...
+%     0;0;0.0140;0;0;0;0;0;0;0;0;0;0;0;0;0;0];
 
 % output the rates of the chosen state
 % kPRMout = kPRM(state_PR);
 % kPRout = kPR(state_PR);
 
-kPout(1) = kPRM(state_PR);
-kPout(2) = kPR(state_PR);
+
+
 
 %% Determine transcription initiation rate of PL promoter
 
@@ -69,12 +69,12 @@ Z_PL= exp(-delG_PL./(R*T)).*...
      ((RNAP) .^ spc_bound_PL(:,3));
 Prob_PL= Z_PL/sum(Z_PL); 
 
-state_PL=find(cumsum(Prob_PL) > rand_num(2),1);
-
-kPL=[0;0;0;0;0;0.011;0;0;0;0];
+% state_PL=find(cumsum(Prob_PL) > rand_num(2),1);
+% 
+% kPL=[0;0;0;0;0;0.011;0;0;0;0];
 
 % kPLout=kPL(state_PL);
-kPout(3) = kPL(state_PL);
+
 
 %% Determine transcription initiation rate of PRE promoter
 
@@ -87,12 +87,23 @@ Z_PRE= exp(-delG_PRE./(R*T)).*...
      ((RNAP) .^ spc_bound_PRE(:,2));
 Prob_PRE= Z_PRE/sum(Z_PRE); 
 
-state_PRE=find(cumsum(Prob_PRE) > rand_num(3),1);
-
-kPRE=[0;0.00004;0;0.015];
+% state_PRE=find(cumsum(Prob_PRE) > rand_num(3),1);
+% 
+% kPRE=[0;0.00004;0;0.015];
 
 % kPREout=kPRE(state_PRE);
-kPout(4) = kPRE(state_PRE);
+
+%% Outputs
+
+% kPout(1) = kPR(state_PR);
+% kPout(2) = kPRE(state_PRE);
+% kPout(3) = kPRM(state_PR);
+% kPout(4) = kPL(state_PL);
+
+varargout{1} = Prob_PR;
+varargout{2} = Prob_PRE;
+varargout{3} = Prob_PL;
+
 
 end
 

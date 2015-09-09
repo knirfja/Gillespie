@@ -7,13 +7,29 @@ function [ varargout ] = LambdaModel( varargin )
 % Arkin, A., Ross, J. & McAdams, H. H. 
 % Stochastic kinetic analysis of developmental pathway bifurcation in phage
 % lambda-infected Escherichia coli cells. Genetics 149, 1633–48 (1998)
-close all
+% close all
+
 %% Initial conditions and parameters
+
+
+
 % Number of cells to simulate
 numruns = 1;
 
-% Set random seed for reproducibility
-rng(159265357)
+%%% Ending condition of the simulation
+    % Final Volume (L)
+    Vmax= 3*10^-15;
+    % Final Time (s)
+    tmax=60*50;
+    % Maximum number of steps
+    stepmax=8*10^5;
+    
+%%% Set random seed for reproducibility
+if nargin > 0
+    rng(varargin{1})
+else
+    rng(159265357)
+end
 
 % temp
 Tmp = 30+273.15; 
@@ -32,13 +48,7 @@ nt_riboblocked=15;
 % For now just using RNAP occulsion.
 % Need to find a reference for this.
 
-% Ending condition of the simulation
-    % Final Volume (L)
-    Vmax= 2*10^-15;
-    % Final Time (s)
-    tmax=60*60;
-    % Maximum number of steps
-    stepmax=8*10^5;
+
 
 % initial MOI of cells
 n.phage=1;
@@ -57,50 +67,48 @@ n.P2cII=0;
 n.P2cIII=0;
 
 % No phage mRNA or bound ribosomes
-% PRmRNA=create_mRNA(1);
-% PREmRNA=create_mRNA(2);
-% PRMmRNA=create_mRNA(3);
-% PLmRNA=create_mRNA(4);
+PRmRNA=create_mRNA(1);
+PREmRNA=create_mRNA(2);
+PRMmRNA=create_mRNA(3);
+PLmRNA=create_mRNA(4);
 
-PRmRNA.pos=[];
-PRmRNA.ribopos=[];
-PRmRNA.N=0; % is N bound?
-PRmRNA.T=0; % is the mRNA terminated?
-PRmRNA.Dcro=0; % is the mRNA being degraded by RNAse at cro?
-PRmRNA.DcII=0;  % is the mRNA being degraded by RNAse at cII?
-PRmRNA.km=zeros(1,7);
-PRmRNA.kr=[];
-
-PREmRNA.pos=[];
-PREmRNA.ribopos=[];
-PREmRNA.T=0;
-PREmRNA.D=0; % is the mRNA being degraded by RNAse?
-PREmRNA.km=zeros(1,7);
-PREmRNA.kr=[];
-
-PRMmRNA.pos=[];
-PRMmRNA.ribopos=[];
-PRMmRNA.T=0;
-PRMmRNA.D=0; % is the mRNA being degraded by RNAse?
-PRMmRNA.km=zeros(1,7);
-PRMmRNA.kr=[];
-
-PLmRNA.pos=[];
-PLmRNA.ribopos=[];
-PLmRNA.N=0; % is N bound?
-PLmRNA.T=0; % is the mRNA terminated?.
-PLmRNA.DN=0; % is the mRNA being degraded by RNAse at N?
-PLmRNA.DcIII=0; % is the mRNA being degraded by RNAse at cIII?
-PLmRNA.km=zeros(1,7);
-PLmRNA.kr=[];
+% PRmRNA.pos=[];
+% PRmRNA.ribopos=[];
+% PRmRNA.N=0; % is N bound?
+% PRmRNA.T=0; % is the mRNA terminated?
+% PRmRNA.Dcro=0; % is the mRNA being degraded by RNAse at cro?
+% PRmRNA.DcII=0;  % is the mRNA being degraded by RNAse at cII?
+% PRmRNA.km=zeros(1,7);
+% PRmRNA.kr=[];
+% 
+% PREmRNA.pos=[];
+% PREmRNA.ribopos=[];
+% PREmRNA.T=0;
+% PREmRNA.D=0; % is the mRNA being degraded by RNAse?
+% PREmRNA.km=zeros(1,7);
+% PREmRNA.kr=[];
+% 
+% PRMmRNA.pos=[];
+% PRMmRNA.ribopos=[];
+% PRMmRNA.T=0;
+% PRMmRNA.D=0; % is the mRNA being degraded by RNAse?
+% PRMmRNA.km=zeros(1,7);
+% PRMmRNA.kr=[];
+% 
+% PLmRNA.pos=[];
+% PLmRNA.ribopos=[];
+% PLmRNA.N=0; % is N bound?
+% PLmRNA.T=0; % is the mRNA terminated?.
+% PLmRNA.DN=0; % is the mRNA being degraded by RNAse at N?
+% PLmRNA.DcIII=0; % is the mRNA being degraded by RNAse at cIII?
+% PLmRNA.km=zeros(1,7);
+% PLmRNA.kr=[];
 
 % Reaction rate constants (see table)
 k= [0.0007;0.050;0.50;0.0025;0.050;0.50;0.00231;0.010;0.010;0.0020;...
     0.010;0.0010;0.00010;0.00025;0.065;0.60;0.010;0.010;0.0010;NaN;...
     NaN;30;5;0.145;0.10;30;15;15;30;NaN;5;25;30;0.0020;100;0.20];
-% Adjusted from paper to get an initiation rate of 0.2 / sec and 10 proteins / transcript
-k(34)=400000; 
-k(36)=0.02;
+% Adjusted to get the single molecule rates
 
 % reaction rates of each promoter state
 kPR=[0;0;0;0;0;0;0;0;0.0140;0;0;0;0;0;0;0.0140;0;0;0;0;0;0;0.0140;...
@@ -207,18 +215,21 @@ cIII_span = [33463,33299]; % <-
 % PLmRNA.km=zeros(1,5);
 
 %% Simulation Start
-timeout=zeros(numruns,stepmax);
-cI_2out = zeros(numruns,stepmax);
-cro_2out = zeros(numruns,stepmax);
-PRmRNAout = zeros(numruns,stepmax);
-PREmRNAout = zeros(numruns,stepmax);
-PRMmRNAout = zeros(numruns,stepmax);
-PLmRNAout = zeros(numruns,stepmax);
+timeout=zeros(1,stepmax);
+Vout=zeros(1,stepmax);
+cI_2out = zeros(1,stepmax);
+cro_2out = zeros(1,stepmax);
+PRmRNAout = zeros(1,stepmax);
+PREmRNAout = zeros(1,stepmax);
+PRMmRNAout = zeros(1,stepmax);
+PLmRNAout = zeros(1,stepmax);
+Nout= zeros(1,stepmax);
+cIIout= zeros(1,stepmax);
+cIIIout= zeros(1,stepmax);
 
-maxstep=1;
-tic
+
 for runnum = 1:numruns
-    disp(['Run ' num2str(runnum)])
+%     disp(['Run ' num2str(runnum)])
     t=0;
     curstep=0;
     V=Vin;
@@ -226,33 +237,74 @@ for runnum = 1:numruns
     f_continue=1;    
     while f_continue
         curstep=curstep+1;
-        if curstep == 3223
+%         % Debug
+%         if curstep == 3223
+%             disp('')
+%         end
+
+        AV=A*V;
+        % DEBUG#
+        if t>60*2
             disp('')
         end
+    % update housekeeping molecules
+        % Number of RNAP required for 30 nM concentration
+        n.RNAP= c.RNAP*AV;
+        % Number of ribo required for 500 nM concentration
+        n.ribo= c.ribo*AV;
+        % Number of P1 required for 35 nM concentration
+        n.P1= c.P1*AV;
+        % Number of RNAP required for 30 nM concentration
+        n.P2= c.P2*AV;
+        
 
-       
-%     % update housekeeping molecules
-%         % Number of RNAP required for 30 nM concentration
-%         n.RNAP= c.RNAP*A*V;
-%         % Number of ribo required for 500 nM concentration
-%         n.ribo= c.ribo*A*V;
-%         % Number of P1 required for 35 nM concentration
-%         n.P1= c.P1*A*V;
-%         % Number of RNAP required for 30 nM concentration
-%         n.P2= c.P2*A*V;
-
-    % update concentrations for rate calculations
-        c.cro=	n.cro/A/V;
-        c.cro_2= n.cro_2/A/V;
-        c.cI=   n.cI/A/V;
-        c.cI_2=  n.cI_2/A/V;
-        c.cII=  n.cII/A/V;
-        c.cIII= n.cIII/A/V;
-        c.N=    n.N/A/V;
-        c.P1cII= n.P1cII/A/V;
-        c.P2cII= n.P2cII/A/V;
-        c.P1cIII= n.P1cIII/A/V;
-        c.P2cIII= n.P2cIII/A/V;
+    % update concentrations for partition function calculations
+%         c.cro=	n.cro/AV;
+        c.cro_2= n.cro_2/AV;
+%         c.cI=   n.cI/AV;
+        c.cI_2=  n.cI_2/AV;
+        c.cII=  n.cII/AV;
+%         c.cIII= n.cIII/AV;
+%         c.N=    n.N/AV;
+%         c.P1cII= n.P1cII/AV;
+%         c.P2cII= n.P2cII/AV;
+%         c.P1cIII= n.P1cIII/AV;
+%         c.P2cIII= n.P2cIII/AV;
+    %%% Store Outputs
+        timeout(1,curstep) = t;
+        Vout(1,curstep)= V;
+        
+        cIout(1,curstep) = n.cI;
+        croout(1,curstep) = n.cro;
+        cI_2out(1,curstep) = n.cI_2;
+        cro_2out(1,curstep) = n.cro_2;
+        Nout(1,curstep) = n.N;
+        cIIout(1,curstep) = n.cII;
+        cIIIout(1,curstep) = n.cIII;
+%         % DEBUG
+%         if curstep == 41
+%             disp('')
+%         end
+        if isempty(PRmRNA(1).pos)
+            PRmRNAout(1,curstep) = 0;
+        else
+            PRmRNAout(1,curstep) = numel(PRmRNA);
+        end
+        if isempty(PREmRNA(1).pos)
+            PREmRNAout(1,curstep) = 0;
+        else
+            PREmRNAout(1,curstep) = numel(PREmRNA);
+        end
+        if isempty(PRMmRNA(1).pos)
+            PRMmRNAout(1,curstep) = 0;
+        else
+            PRMmRNAout(1,curstep) = numel(PRMmRNA);
+        end
+        if isempty(PLmRNA(1).pos)
+            PLmRNAout(1,curstep) = 0;
+        else
+            PLmRNAout(1,curstep) = numel(PLmRNA);
+        end
 
         %% Propensity of TX initiation at each promoter
     %     propen(20:23)=partition_functions(c.cI_2,c.cro_2,c.RNAP,c.cII,T,rand(3,1));
@@ -291,9 +343,12 @@ for runnum = 1:numruns
         % Propensity vector (km) for each mRNA
         % km(1)= DNA+1
         % km(2)= ribo binds
-        % km(3)= RNAse binds,...
+        % km(3)= RNAse binds
         % km(4) = terminate TX
-        % km(5)= toggle N state    
+        % km(5)= toggle N state 
+        % km(6)= ribo binds 2nd gene
+        % km(7)= RNAse binds 2nd gene
+        % 
 
         % Clear vector so that we can use it's size later
         tx_propen=[]; 
@@ -310,7 +365,7 @@ for runnum = 1:numruns
                     else
                         PRmRNA(iter1).km(1) = k(23);
                         PRmRNA(iter1).km(4) = 0;
-                        PRmRNA(iter1).km(5) = k(24)*c.N;                    
+                        PRmRNA(iter1).km(5) = k(24)*n.N;                    
                     end
                 elseif PRmRNA(iter1).pos == TR1; % at TR1
                     PRmRNA(iter1).km(1) = k(27);
@@ -320,7 +375,7 @@ for runnum = 1:numruns
                     PRmRNA(iter1).km(1) = k(22);
                     PRmRNA(iter1).km(4) = 0;
                     PRmRNA(iter1).km(5) = 0;               
-                end
+                end                
                 % Ribo and RNAse RBS binding
                 % cro
                 if PRmRNA(iter1).Dcro                            % RNAse has already degraded the cro RBS 
@@ -333,7 +388,7 @@ for runnum = 1:numruns
                     PRmRNA(iter1).km(2)=0;
                     PRmRNA(iter1).km(3)=0;
                 else                                              % RBS is free to bind
-                    PRmRNA(iter1).km(2)=k(34)*c.ribo;
+                    PRmRNA(iter1).km(2)=k(34)*n.ribo;
                     PRmRNA(iter1).km(3)=k(36);
                 end                
                 % cII
@@ -349,10 +404,11 @@ for runnum = 1:numruns
                     PRmRNA(iter1).km(6)=0;
                     PRmRNA(iter1).km(7)=0;                
                 else                                              % RBS is free to bind
-                    PRmRNA(iter1).km(6)=k(34)*c.ribo;
+                    PRmRNA(iter1).km(6)=k(34)*n.ribo;
                     PRmRNA(iter1).km(7)=k(36);
                 end
-            end        
+%                 PRmRNA(iter1).km= PRmRNA(iter1).km./AV; % adjust to cell concentration
+            end            
         end
         % PREmRNA
         if ~isempty(PREmRNA(1).pos)
@@ -376,9 +432,10 @@ for runnum = 1:numruns
                     PREmRNA(iter2).km(2)=0;
                     PREmRNA(iter2).km(3)=0;
                 else                                              % RBS is free to bind
-                    PREmRNA(iter2).km(2)=k(34)*c.ribo;
+                    PREmRNA(iter2).km(2)=k(34)*n.ribo;
                     PREmRNA(iter2).km(3)=k(36);
                 end
+%                 PREmRNA(iter2).km= PREmRNA(iter2).km./AV; % adjust to cell concentration
             end
         end
         % PRMmRNA
@@ -403,9 +460,10 @@ for runnum = 1:numruns
                     PRMmRNA(iter3).km(2)=0;
                     PRMmRNA(iter3).km(3)=0;
                 else
-                    PRMmRNA(iter3).km(2)=k(34)*c.ribo;
+                    PRMmRNA(iter3).km(2)=k(34)*n.ribo;
                     PRMmRNA(iter3).km(3)=k(36);                
                 end
+%                 PRMmRNA(iter3).km= PRMmRNA(iter3).km./AV; % adjust to cell concentration
             end
         end
         %PLmRNA
@@ -421,7 +479,7 @@ for runnum = 1:numruns
                     else
                         PLmRNA(iter4).km(1) = k(23);
                         PLmRNA(iter4).km(4) = 0;
-                        PLmRNA(iter4).km(5) = k(24)*c.N;                    
+                        PLmRNA(iter4).km(5) = k(24)*n.N;                    
                     end
                 elseif PLmRNA(iter4).pos == TL1; % at TL1
                     PLmRNA(iter4).km(1) = k(27);
@@ -445,7 +503,7 @@ for runnum = 1:numruns
                     PLmRNA(iter4).km(2)=0;
                     PLmRNA(iter4).km(3)=0;
                 else
-                    PLmRNA(iter4).km(2)=k(34)*c.ribo;
+                    PLmRNA(iter4).km(2)=k(34)*n.ribo;
                     PLmRNA(iter4).km(3)=k(36);
                 end
                 % cIII
@@ -460,9 +518,10 @@ for runnum = 1:numruns
                     PLmRNA(iter4).km(6)=0;
                     PLmRNA(iter4).km(7)=0;
                 else
-                    PLmRNA(iter4).km(6)=k(34)*c.ribo;
+                    PLmRNA(iter4).km(6)=k(34)*n.ribo;
                     PLmRNA(iter4).km(7)=k(36);
-                end                  
+                end  
+%                 PLmRNA(iter4).km= PLmRNA(iter4).km./AV; % adjust to cell concentration
             end        
         end
         tx_propen=[PRmRNA(:).km PREmRNA(:).km PRMmRNA(:).km PLmRNA(:).km];
@@ -487,6 +546,7 @@ for runnum = 1:numruns
                 else
                     PRmRNA(iter5).kr=[];           
                 end
+%                 PRmRNA(iter5).kr= PRmRNA(iter5).kr./AV;
             end
         else
             PRmRNA(1).kr=[];
@@ -509,6 +569,7 @@ for runnum = 1:numruns
                 else
                     PREmRNA(iter6).kr=[];           
                 end
+%                 PREmRNA(iter6).kr= PREmRNA(iter6).kr./AV;
             end
         else
             PREmRNA(1).kr=[];
@@ -531,6 +592,7 @@ for runnum = 1:numruns
                 else
                     PRMmRNA(iter7).kr=[];           
                 end
+%                 PRMmRNA(iter7).kr= PRMmRNA(iter7).kr./AV;
             end
         else
             PRMmRNA(1).kr=[];
@@ -552,7 +614,8 @@ for runnum = 1:numruns
                     end  
                 else
                     PLmRNA(iter8).kr=[];
-                end                
+                end 
+%             PLmRNA(iter8).kr= PLmRNA(iter8).kr./AV;
             end
         else
             PLmRNA(1).kr=[];
@@ -564,29 +627,29 @@ for runnum = 1:numruns
         %% Propensity of Protein reactions
         % See table for details on these reactions
         % cI
-        propen(1)=k(1)*c.cI;
-        propen(2)=k(2)*c.cI^2;
-        propen(3)=k(3)*c.cI_2;
+        propen(1)=k(1)*n.cI;
+        propen(2)=k(2)*(n.cI^2-n.cI)/2;
+        propen(3)=k(3)*n.cI_2;
         % cro
-        propen(4)=k(4)*c.cro;
-        propen(5)=k(5)*c.cro^2;    
-        propen(6)=k(6)*c.cro_2;
+        propen(4)=k(4)*n.cro;
+        propen(5)=k(5)*(n.cro^2-n.cro)/2;    
+        propen(6)=k(6)*n.cro_2;
         % N deg
-        propen(7)=k(7)*c.N;
+        propen(7)=k(7)*n.N;
         % P1 deg pathway
-        propen(8)=k(8)*c.cII*c.P1;
-        propen(9)=k(9)*c.P1cII;
-        propen(10)=k(10)*c.P1cII;
-        propen(11)=k(11)*c.cIII*c.P1;
-        propen(12)=k(12)*c.P1cIII;
-        propen(13)=k(13)*c.P1cIII;
+        propen(8)=k(8)*n.cII*n.P1;
+        propen(9)=k(9)*n.P1cII;
+        propen(10)=k(10)*n.P1cII;
+        propen(11)=k(11)*n.cIII*n.P1;
+        propen(12)=k(12)*n.P1cIII;
+        propen(13)=k(13)*n.P1cIII;
         % P2 deg pathway
-        propen(14)=k(8)*c.cII*c.P2;
-        propen(15)=k(9)*c.P2cII;
-        propen(16)=k(10)*c.P2cII;
-        propen(17)=k(11)*c.cIII*c.P2;
-        propen(18)=k(12)*c.P2cIII;
-        propen(19)=k(13)*c.P2cIII;  
+        propen(14)=k(8)*n.cII*n.P2;
+        propen(15)=k(9)*n.P2cII;
+        propen(16)=k(10)*n.P2cII;
+        propen(17)=k(11)*n.cIII*n.P2;
+        propen(18)=k(12)*n.P2cIII;
+        propen(19)=k(13)*n.P2cIII;  
 
         %% Choose reaction 
         rannum=rand(1);        
@@ -630,18 +693,31 @@ for runnum = 1:numruns
                                 % km(2)= ribo binds cro
                             %                         disp('ribosome binding')
                                 PRmRNA(m_ind).ribopos = [PRmRNA(m_ind).ribopos cro_span(1)]; % approximating that RBS is located at start codon
-                                disp('Ribo bound cro!')
+%                                 % Debug
+%                                 disp('Ribo bound cro!')
                             case 3
                                 % km(3)= RNAse binds cro
+                                % Debug
                             %                         disp('RNAse binding')
-                                PRmRNA(m_ind).Dcro= 1;       
-                                disp('RNAse bound cro!')
+                                PRmRNA(m_ind).Dcro= 1; 
+                                % if there are no ribosomes delete mRNA
+                                if isempty(PRmRNA(m_ind).ribopos)
+                                    PRmRNA(m_ind)=[];
+                                    if m_ind<=1 % if the last mRNA is destroyed, create a blank mRNA with no pos
+                                        PRmRNA(1)=create_mRNA(1);
+                                    end
+                                    propen((0:6)+(7*(m_ind-1)+24))=[];
+                                end
+                                % Debug
+%                                 disp('RNAse bound cro!')
                             case 4
                                 % km(4) = terminate TX
+                                % Debug
                             %                         disp('TX termination')
                                 PRmRNA(m_ind).T= 1;
                             case 5
                                 % km(5)= toggle N state 
+                                % Debug
                             %                         disp('toggle N state')
                                 PRmRNA(m_ind).N= ~PRmRNA(m_ind).N;
                             case 6 
@@ -650,6 +726,14 @@ for runnum = 1:numruns
                             case 0
                                 % km(7)= RNAse binds cII
                                 PRmRNA(m_ind).DcII= 1;
+                                % if there are no ribosomes delete mRNA
+                                if isempty(PRmRNA(m_ind).ribopos)
+                                    PRmRNA(m_ind)=[];
+                                    if m_ind<=1 % if the last mRNA is destroyed, create a blank mRNA with no pos
+                                        PRmRNA(1)=create_mRNA(1);
+                                    end
+                                    propen((0:6)+(7*(m_ind-1)+24))=[];
+                                end                                
                             otherwise
                                 disp('Error, reaction not found')
                         end                        
@@ -671,7 +755,15 @@ for runnum = 1:numruns
                             case 3
                                 % km(3)= RNAse binds
                             %                         disp('RNAse binding')
-                                PREmRNA(m_ind).D= 1;                      
+                                PREmRNA(m_ind).D= 1;     
+                                % if there are no ribosomes delete mRNA
+                                if isempty(PREmRNA(m_ind).ribopos)
+                                    PREmRNA(m_ind)=[];
+                                    if m_ind<=1
+                                        PREmRNA(1)=create_mRNA(2);
+                                    end
+                                propen((0:6)+(tx_ind(1)+7*(m_ind-1)+24))=[];
+                                end
                             case 4
                                 % km(4) = terminate TX
                             %                         disp('TX termination')
@@ -701,7 +793,15 @@ for runnum = 1:numruns
                             case 3
                                 % km(3)= RNAse binds
                             %                         disp('RNAse binding')
-                                PRMmRNA(m_ind).D= 1;                      
+                                PRMmRNA(m_ind).D= 1;
+                                % if there are no ribosomes delete mRNA
+                                if isempty(PRMmRNA(m_ind).ribopos)
+                                    PRMmRNA(m_ind)=[];
+                                    if m_ind<=1
+                                        PRMmRNA(1)=create_mRNA(3);
+                                    end
+                                propen((0:6)+(tx_ind(2)+7*(m_ind-1)+24))=[];
+                                end
                             case 4
                                 % km(4) = terminate TX
                             %                         disp('TX termination')
@@ -746,6 +846,14 @@ for runnum = 1:numruns
                             case 0
                                 % km(7) = RNAse binds cIII
                                 PLmRNA(m_ind).DcIII= 1;
+                                % if there are no ribosomes delete mRNA
+                                if isempty(PLmRNA(m_ind).ribopos)
+                                    PLmRNA(m_ind)=[];
+                                    if m_ind<=1
+                                        PLmRNA(1)=create_mRNA(4);
+                                    end
+                                propen((0:6)+(tx_ind(3)+7*(m_ind-1)+24))=[];
+                                end
                             otherwise
                                 disp('Error, reaction not found')
                         end
@@ -785,6 +893,7 @@ for runnum = 1:numruns
                             % if the ribo is in between cro and cII then 
                             % the cro protein is finished
                             PRmRNA(m_ind).ribopos(r_ind) = []; % ribo unbinds
+                            PRmRNA(m_ind).kr(r_ind)=[]; % clear propensity
                             propen(selected_rxn)=[]; % remove reaction
                             n.cro = n.cro + 1; % cro is produced
                             if PRmRNA(m_ind).Dcro && PRmRNA(m_ind).DcII && isempty(PRmRNA(m_ind).ribopos)
@@ -798,12 +907,16 @@ for runnum = 1:numruns
                             % if the ribo is past cII, then the cII protein is
                             % finished
                             PRmRNA(m_ind).ribopos(r_ind) = []; % ribo unbinds
+                            PRmRNA(m_ind).kr(r_ind)=[]; % clear propensity
                             propen(selected_rxn)=[];
                             n.cII = n.cII + 1; % cII is produced
                             if PRmRNA(m_ind).DcII && PRmRNA(m_ind).Dcro && isempty(PRmRNA(m_ind).ribopos)
                                 % if the mRNA is being degraded at both locations and there
                                 % are no more active ribo
                                 PRmRNA(m_ind) = []; % mRNA is degraded
+                                if m_ind<=1 % if the last mRNA is destroyed, create a blank mRNA with no pos
+                                    PRmRNA(1)=create_mRNA(1);
+                                end
                                 propen((0:6)+(7*(m_ind-1)+24))=[];
                             end
                         end                            
@@ -819,12 +932,16 @@ for runnum = 1:numruns
                         if PREmRNA(m_ind).ribopos(r_ind) < cI_span(2)
                             % if the ribo is "past" cI then
                             PREmRNA(m_ind).ribopos(r_ind)=[]; % ribo unbinds
+                            PREmRNA(m_ind).kr(r_ind)=[]; % clear propensity
                             propen(selected_rxn)=[];
                             n.cI= n.cI + 1; % cI is produced
                             if PREmRNA(m_ind).D && isempty(PREmRNA(m_ind).ribopos)
                                 % if the mRNA is being degraded and there 
                                 % are no more active ribo
                                 PREmRNA(m_ind) = [];
+                                if m_ind<=1
+                                    PREmRNA(1)=create_mRNA(2);
+                                end
                                 propen((0:6)+(tx_ind(1)+7*(m_ind-1)+24))=[];
                             end
                         end
@@ -840,12 +957,16 @@ for runnum = 1:numruns
                         if PRMmRNA(m_ind).ribopos(r_ind) < cI_span(2)
                             % if the ribo is "past" cI then
                             PRMmRNA(m_ind).ribopos(r_ind)=[]; % ribo unbinds
+                            PRMmRNA(m_ind).kr(r_ind)=[]; % clear propensity
                             propen(selected_rxn)=[];
                             n.cI= n.cI + 1; % cI is produced
                             if PRMmRNA(m_ind).D && isempty(PRMmRNA(m_ind).ribopos)
                                 % if the mRNA is being degraded and there 
                                 % are no more active ribo
                                 PRMmRNA(m_ind) = [];
+                                if m_ind<=1
+                                    PRMmRNA(1)=create_mRNA(3);
+                                end
                                 propen((0:6)+(tx_ind(2)+7*(m_ind-1)+24))=[];
                             end
                         end
@@ -854,13 +975,19 @@ for runnum = 1:numruns
                         m_ind=1;                        
                         while numel([PLmRNA(1:m_ind).kr]) < selected_rxn-23-numel(tx_propen)-tl_ind(3)
                             m_ind=m_ind+1;
-                        end
+                        end                        
                         r_ind = selected_rxn-23-numel(tx_propen)-tl_ind(3)-numel([PLmRNA(1:m_ind-1).kr]);
+                        % FIXBUG run=LambdaModel(314159265)
+                        % Debug
+                        if r_ind > numel(PLmRNA(m_ind).ribopos)
+                            disp('')
+                        end
                         % Advance the ribo one nt
                         PLmRNA(m_ind).ribopos(r_ind) = PLmRNA(m_ind).ribopos(r_ind)-1;
                         if PLmRNA(m_ind).ribopos(r_ind) < N_span(2) && PLmRNA(m_ind).ribopos(r_ind) > cIII_span(1)
                             % if the ribo is left of N but right of cIII
                             PLmRNA(m_ind).ribopos(r_ind)=[]; % ribo unbinds
+                            PLmRNA(m_ind).kr(r_ind)=[]; % clear propensity
                             propen(selected_rxn)=[];
                             n.N= n.N + 1; % N is produced
 %                             % Debug
@@ -873,11 +1000,15 @@ for runnum = 1:numruns
                                 % if the mRNA is being degraded at both RBS and there 
                                 % are no more active ribo
                                 PLmRNA(m_ind) = [];
+                                if m_ind<=1 % if the last mRNA is destroyed, create a blank mRNA with no pos
+                                    PLmRNA(1)=create_mRNA(4);
+                                end
                                 propen((0:6)+(tx_ind(3)+7*(m_ind-1)+24))=[];
                             end
                         elseif PLmRNA(m_ind).ribopos(r_ind) < cIII_span(2)
                             % if ribo is left of cIII
                             PLmRNA(m_ind).ribopos(r_ind)=[]; % ribo unbinds
+                            PLmRNA(m_ind).kr(r_ind)=[]; % clear propensity
                             propen(selected_rxn)=[];
                             n.cIII= n.cIII + 1; % cIII is produced
                             if PLmRNA(m_ind).DN && PLmRNA(m_ind).DcIII && isempty(PLmRNA(m_ind).ribopos)
@@ -963,13 +1094,8 @@ for runnum = 1:numruns
                 else
                     ind1 = numel(PRmRNA)+1;
                 end
-                PRmRNA(ind1).pos = PR_trans(1);
-                PRmRNA(ind1).ribopos=[];
-                PRmRNA(ind1).N=0; % is N bound?
-                PRmRNA(ind1).T=0; % is the mRNA terminated?
-                PRmRNA(ind1).Dcro=0;
-                PRmRNA(ind1).DcII=0;
-                PRmRNA(ind1).km=zeros(1,7);                
+                PRmRNA(ind1)=create_mRNA(1); % Create empty mRNA
+                PRmRNA(ind1).pos = PR_trans(1); % start it at tss               
             case 21
                 %PRE
                 if isempty(PREmRNA(1).pos)
@@ -977,12 +1103,8 @@ for runnum = 1:numruns
                 else
                     ind2 = numel(PREmRNA)+1;
                 end
+                PREmRNA(ind2)=create_mRNA(2);
                 PREmRNA(ind2).pos = PRE_trans(1);
-                PREmRNA(ind2).ribopos=[];
-                PREmRNA(ind2).N=0; % is N bound?
-                PREmRNA(ind2).T=0; % is the mRNA terminated?
-                PREmRNA(ind2).D=0;
-                PREmRNA(ind2).km=zeros(1,7);            
             case 22
                 %PRM
                 if isempty(PRMmRNA(1).pos)
@@ -990,12 +1112,8 @@ for runnum = 1:numruns
                 else
                     ind3 = numel(PRMmRNA)+1;
                 end
-                PRMmRNA(ind3).pos = PRM_trans(1);
-                PRMmRNA(ind3).ribopos=[];
-                PRMmRNA(ind3).N=0; % is N bound?
-                PRMmRNA(ind3).T=0; % is the mRNA terminated?
-                PRMmRNA(ind3).D=0;
-                PRMmRNA(ind3).km=zeros(1,7);   
+                PRMmRNA(ind3)=create_mRNA(3);
+                PRMmRNA(ind3).pos = PRM_trans(1); 
             case 23
                 %PL
                 if isempty(PLmRNA(1).pos)
@@ -1003,13 +1121,8 @@ for runnum = 1:numruns
                 else
                     ind4 = numel(PLmRNA)+1;
                 end
+                PLmRNA(ind4)=create_mRNA(4);
                 PLmRNA(ind4).pos = PL_trans(1);
-                PLmRNA(ind4).ribopos=[];
-                PLmRNA(ind4).N=0; % is N bound?
-                PLmRNA(ind4).T=0; % is the mRNA terminated?
-                PLmRNA(ind4).DN=0;
-                PLmRNA(ind4).DcIII=0;
-                PLmRNA(ind4).km=zeros(1,7);   
             otherwise
                 disp('Error, reaction not found')
         end
@@ -1023,16 +1136,9 @@ for runnum = 1:numruns
     %     tx_propen(selected_rxn-24)
 
 
-    %% Outputs
-        timeout(runnum,curstep) = t;
-        cI_2out(runnum,curstep) = n.cI_2;
-        cro_2out(runnum,curstep) = n.cro_2;
-        PRmRNAout(runnum,curstep) = numel(PRmRNA);
-        PREmRNAout(runnum,curstep) = numel(PREmRNA);
-        PRMmRNAout(runnum,curstep) = numel(PRMmRNA);
-        PLmRNAout(runnum,curstep) = numel(PLmRNA);
 
-    %% Choose next timestep
+
+    %% Advance next timestep
 
         
 
@@ -1040,6 +1146,7 @@ for runnum = 1:numruns
         % update volume based on growth rate
         V=Vin+k0*t;
         
+        %% Check end conditions
         if V > Vmax;
             f_continue=0;
         end
@@ -1047,18 +1154,32 @@ for runnum = 1:numruns
         if t > tmax
             f_continue=0;
         end
-    end
-    toc
-    timeplot=timeout(runnum,1:curstep);
-    maxstep=max(maxstep,curstep);
-    figure; plot(1:numel(timeplot),timeplot,'.')
+    end    
+    
+    %% Outputs
+    % DEBUG
+%     timeplot=timeout(1,1:curstep);
+%     figure; plot(1:numel(timeplot),timeplot,'.')    
+    
+    curstep=max(curstep,curstep);
+
     run(runnum).t=timeout(runnum,1:curstep);
+    run(runnum).V=Vout(runnum,1:curstep);
+    
+    run(runnum).cI=cIout(runnum,1:curstep);
+    run(runnum).cro=croout(runnum,1:curstep);    
     run(runnum).cI_2=cI_2out(runnum,1:curstep);
     run(runnum).cro_2=cro_2out(runnum,1:curstep);
+    run(runnum).N=Nout(runnum,1:curstep);
+    run(runnum).cII=cIIout(runnum,1:curstep);
+    run(runnum).cIII=cIIIout(runnum,1:curstep);
+    
     run(runnum).PRmRNA=PRmRNAout(runnum,1:curstep);
     run(runnum).PREmRNA=PREmRNAout(runnum,1:curstep);
     run(runnum).PRMmRNA=PRMmRNAout(runnum,1:curstep);
     run(runnum).PLmRNA=PLmRNAout(runnum,1:curstep);
+    run(runnum).randseed=varargin{1};
+    
 end
 
 varargout{1}=run;
@@ -1110,7 +1231,7 @@ end
 
 
 
-end
+
 
 
 
